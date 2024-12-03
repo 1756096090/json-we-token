@@ -1,0 +1,62 @@
+// styles/json-formatter.scss
+
+.json-editor {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 14px;
+    line-height: 1.5;
+    background: #1e1e1e;
+    color: #d4d4d4;
+    padding: 1.5rem;
+    border-radius: 6px;
+    overflow-x: auto;
+
+    .key {
+        color: #9cdcfe;
+
+        &::after {
+            content: ': ';
+            color: #d4d4d4;
+        }
+    }
+
+    .string-value {
+        color: #ce9178;
+    }
+
+    .number-value {
+        color: #b5cea8;
+    }
+
+    .boolean-value {
+        color: #569cd6;
+    }
+
+    .null-value {
+        color: #569cd6;
+    }
+
+    .comma {
+        color: #d4d4d4;
+        margin-left: 2px;
+    }
+
+    .bracket {
+        color: #d4d4d4;
+    }
+
+    .object-container,
+    .array-container {
+        padding-left: 2rem;
+        border-left: 1px solid #404040;
+        margin: 0.25rem 0;
+    }
+
+    .object-item,
+    .array-item {
+        position: relative;
+
+        &:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+    }
+}
