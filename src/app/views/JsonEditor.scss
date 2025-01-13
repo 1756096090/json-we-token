@@ -1,0 +1,40 @@
+.json-editor-container {
+  display: flex;
+  font-family: monospace;
+
+  .json-editor-content {
+    flex: 1;
+    border: 1px solid #ccc;
+    padding: 10px;
+    min-height: 200px;
+    white-space: pre-wrap;
+  }
+
+  .json-structure {
+    flex: 1;
+    border: 1px solid #ddd;
+    padding: 10px;
+    background-color: #f4f4f4;
+
+    .dict-container, .array-container {
+      margin-left: 20px;
+      position: relative;
+    }
+
+    button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+
+    .key {
+      color: #007bff;
+      font-weight: bold;
+    }
+
+    .boolean { color: #28a745; }
+    .string { color: #dc3545; }
+    .number { color: #17a2b8; }
+  }
+}

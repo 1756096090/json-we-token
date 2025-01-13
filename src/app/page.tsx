@@ -1,11 +1,11 @@
 // page.tsx
-import JsonEditor from './components/JsonEditor';
+import JsonEditor2 from './views/JsonEditor2';
 
 export default function Home() {
 
   return (
     <div className="p-4">
-      <JsonEditor/>
+      <JsonEditor2/>
     </div>
   );
 }
