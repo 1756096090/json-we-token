@@ -76,13 +76,65 @@ const JsonFormatter: React.FC<JsonFormatterProps> = ({
             </span>
           ),
           lines: 1
+      return {
+        element: (
+          <input 
+            className="null-value" 
+            value="null" 
+            onChange={(e) => handleChange(currentPath, null)} 
+          />
+        ),
+        lines: 1
+      };
+    }
+
+    switch (typeof value) {
+      case "string":
+        return {
+          element: (
+            <input 
+              className={`string-value ${highlightError?.line === line ? 'error-highlight' : ''}`}
+              title={highlightError?.line === line ? highlightError.message : undefined}
+              value={value}
+              onChange={(e) => handleChange(currentPath, e.target.value)}
+            />
+          ),
+          lines: 1
+        };
+
+      case "number":
+        return {
+          element: (
+            <input 
+              className={`number-value ${highlightError?.line === line ? 'error-highlight' : ''}`}
+              title={highlightError?.line === line ? highlightError.message : undefined}
+              value={value}
+              type="number"
+              onChange={(e) => handleChange(currentPath, parseFloat(e.target.value))}
+            />
+          ),
+          lines: 1
+        };
+
+      case "boolean":
+        return {
+          element: (
+            <input 
+              className={`boolean-value ${highlightError?.line === line ? 'error-highlight' : ''}`}
+              title={highlightError?.line === line ? highlightError.message : undefined}
+              type="checkbox"
+              checked={value}
+              onChange={(e) => handleChange(currentPath, e.target.checked)}
+            />
+          ),
+          lines: 1
         };
 
       case "object":
         if (Array.isArray(value)) {
-          return formatArray(value, { depth, line });
+          return formatArray(value, { depth, line, path: currentPath });
         }
-        return formatObject(value as JsonObject, { depth, line });
+        return formatObject(value as JsonObject, { depth, line, path: currentPath });
 
       default:
         return {
@@ -94,16 +146,17 @@ const JsonFormatter: React.FC<JsonFormatterProps> = ({
 
   const formatArray = (
     array: JsonArray, 
-    options: { depth?: number; line?: number } = {}
+    options: { depth?: number; line?: number; path?: (string | number)[] } = {}
   ): { element: JSX.Element; lines: number } => {
-    const { depth = 0, line = 1 } = options;
+    const { depth = 0, line = 1, path = [] } = options;
     let currentLine = line;
 
     const formattedItems = array.map((item, index) => {
       const { element, lines } = formatValue(item, { 
         indexOrKey: index, 
         depth: depth + 1, 
-        line: currentLine 
+        line: currentLine,
+        path
       });
       currentLine += lines;
       
@@ -117,15 +170,13 @@ const JsonFormatter: React.FC<JsonFormatterProps> = ({
 
     return {
       element: (
-        <>
-          <div>
-            <span className="bracket">[</span>
-            <div className="array-container">
-              {formattedItems}
-            </div>
-            <span className="bracket">]</span>
+        <div>
+          <span className="bracket">[</span>
+          <div className="array-container">
+            {formattedItems}
           </div>
-        </>
+          <span className="bracket">]</span>
+        </div>
       ),
       lines: currentLine - line + 1
     };
@@ -133,9 +184,9 @@ const JsonFormatter: React.FC<JsonFormatterProps> = ({
 
   const formatObject = (
     obj: JsonObject, 
-    options: { depth?: number; line?: number } = {}
+    options: { depth?: number; line?: number; path?: (string | number)[] } = {}
   ): { element: JSX.Element; lines: number } => {
-    const { depth = 0, line = 1 } = options;
+    const { depth = 0, line = 1, path = [] } = options;
     let currentLine = line;
 
     const entries = Object.entries(obj);
@@ -143,7 +194,8 @@ const JsonFormatter: React.FC<JsonFormatterProps> = ({
       const { element, lines } = formatValue(value, { 
         indexOrKey: key, 
         depth: depth + 1, 
-        line: currentLine 
+        line: currentLine,
+        path
       });
       currentLine += lines;
       
@@ -157,13 +209,13 @@ const JsonFormatter: React.FC<JsonFormatterProps> = ({
 
     return {
       element: (
-        <>
+        <div>
           <span className="bracket">{"{"}</span>
           <div className="object-container">
             {formattedEntries}
           </div>
           <span className="bracket">{"}"}</span>
-        </>
+        </div>
       ),
       lines: currentLine - line + 1
     };
@@ -171,11 +223,16 @@ const JsonFormatter: React.FC<JsonFormatterProps> = ({
 
   // Memoize the formatted value to improve performance
   const formattedContent = useMemo(() => {
-    return formatValue(data);
-  }, [data, highlightError]);
+    return formatValue(editableData);
+  }, [editableData, highlightError]);
 
   return (
     <div className="json-editor">
+      <textarea 
+        className="json-input" 
+        value={rawJson} 
+        onChange={handleRawJsonChange} 
+      />
       {formattedContent.element}
     </div>
   );

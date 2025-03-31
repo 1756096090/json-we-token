@@ -1,6 +1,7 @@
-"use client"
+"use client";
 import { useState, useRef, useEffect } from "react";
 import Collapsible from "./components/CollapsibleProps";
+import React from "react";
 
 interface CursorInfo {
   line: number;
@@ -9,9 +10,15 @@ interface CursorInfo {
   lineText: string;
 }
 
-type JsonValueType = 'object' | 'array' | 'string' | 'number' | 'boolean' | 'null' | 'unknown';
+type JsonValueType =
+  | "object"
+  | "array"
+  | "string"
+  | "number"
+  | "boolean"
+  | "null"
+  | "unknown";
 
-// Separate component for editable content
 const EditableJsonView: React.FC<{
   content: React.ReactNode;
   onCursorUpdate: (info: CursorInfo) => void;
@@ -24,41 +31,142 @@ const EditableJsonView: React.FC<{
     cursorOffset: number
   ): CursorInfo => {
     const range = document.createRange();
+    console.log("range22", element);
     range.setStart(element, 0);
     range.setEnd(cursorNode, cursorOffset);
-    
+
     const textUntilCursor = range.toString();
-    const lines = textUntilCursor.split('\n');
+
+    console.log("🔹 Propiedades del objeto Range:");
+
+    console.log("▶ endContainer (Node):", range.endContainer.textContent);
+    console.log("▶ endOffset (number):", range.endOffset);
+    console.log("▶ collapsed (boolean):", range.collapsed);
+    console.log(
+      "▶ commonAncestorContainer (Node):",
+      range.commonAncestorContainer
+    );
+    console.log("▶ toString() (string):", range.toString());
+    const lines = textUntilCursor.split("\n");
     const lineNumber = lines.length;
     const column = lines[lines.length - 1].length + 1;
 
     let currentElement: HTMLElement | null = cursorNode.parentElement;
-    let lineText = '';
-    let text = '';
+    const parentElement: HTMLElement | null =
+      currentElement?.parentElement || null;
+    console.log("parentElement", parentElement);
+    const leftSibling = currentElement?.previousElementSibling;
+    console.log("leftSibling", leftSibling);
+    const rightSibling = currentElement?.nextElementSibling;
+    console.log("leftSibling", rightSibling);
+
+    console.log(
+      "currentElement",
+      currentElement,
+      currentElement?.classList.value
+    );
+    const parent = currentElement?.parentElement || null;
+    console.log("parentElement", parent);
+    const grandParent = parent?.parentElement || null;
+    console.log("grandParent", grandParent);
+
+    const fullText = range.endContainer.textContent || "";
+
+    if (currentElement?.classList.contains("json-value")) {
+      const match = fullText.match(/^("(.*?)"),$/);
+      if (match) {
+        const quotedValue = match[1]; // Ejemplo: "hola"
+
+        currentElement.textContent = quotedValue;
+
+        let commaElement = currentElement.nextElementSibling as HTMLElement;
+        if (!commaElement || !commaElement.classList.contains("comma")) {
+          commaElement = document.createElement("span");
+          commaElement.className = "comma";
+          commaElement.textContent = ",";
+          currentElement.parentElement?.insertBefore(
+            commaElement,
+            currentElement.nextSibling
+          );
+        }
+
+        // Reposicionamos el cursor para que quede después de la coma.
+        const newRange = document.createRange();
+        newRange.setStartAfter(commaElement);
+        newRange.collapse(true);
+
+        const selection = window.getSelection();
+        if (selection) {
+          selection.removeAllRanges();
+          selection.addRange(newRange);
+        }
+      }
+    } else if (currentElement?.classList.contains("comma")) {
+      // Si el texto completo está vacío, eliminamos el elemento.
+
+      if (fullText === "") {
+        currentElement.remove();
+      } else if (fullText == ",") {
+      } else {
+        // Usamos una expresión regular para separar:
+        // - match[1]: todo lo que va antes de la coma (puede estar vacío)
+        // - match[2]: la coma
+        // - match[3]: lo que va después (opcional)
+        const match = fullText.match(/^(.*?)(,)(.*)$/);
+        if (match) {
+          const beforeText = match[1];
+          const commaText = match[2]; // debería ser siempre ","
+          const afterText = match[3];
+
+          if (beforeText == '"' || beforeText == "'") {
+          } else if (afterText == '"' || afterText == "'") {
+          } else {
+            if (beforeText == ",") {
+            }
+          }
+        }
+      }
+    } else if (currentElement?.classList.value === "json-pair") {
+      currentElement = grandParent;
+    } else if (currentElement?.classList.value === "json-object") {
+    } else if (currentElement?.classList.value === "json-array") {
+    } else if (currentElement?.classList.value === "json-key") {
+      currentElement = parent;
+    }
+
+    let lineText = "";
+    let text = "";
 
     while (currentElement && !lineText) {
-      if (currentElement.hasAttribute('data-line-text')) {
-        lineText = currentElement.getAttribute('data-line-text') || '';
-        text = currentElement.textContent || '';
+      if (currentElement.hasAttribute("data-line-text")) {
+        lineText = currentElement.getAttribute("data-line-text") || "";
+        text = currentElement.textContent || "";
       }
       currentElement = currentElement.parentElement;
     }
-    
-    return { 
-      line: lineNumber, 
-      column, 
-      text, 
-      lineText 
+
+    return {
+      line: lineNumber,
+      column,
+      text,
+      lineText,
     };
   };
 
   const handleSelectionChange = () => {
     if (!containerRef.current) return;
-    
+    console.log(containerRef.current);
     const selection = window.getSelection();
+    console.log(selection);
     if (selection && selection.rangeCount > 0) {
       const range = selection.getRangeAt(0);
       if (containerRef.current.contains(range.startContainer)) {
+        console.log(
+          "getCursorPosition",
+          containerRef.current,
+          range.startContainer,
+          range.startOffset
+        );
         const info = getCursorPosition(
           containerRef.current,
           range.startContainer,
@@ -69,10 +177,79 @@ const EditableJsonView: React.FC<{
     }
   };
 
+  const findType = (
+    currentElement: HTMLElement,
+    parent: HTMLElement | null,
+    leftSibling: HTMLElement | null,
+    rightSibling: HTMLHtmlElement | null
+  ) => {
+    
+
+    if(parent && parent.classList.contains("json-object")) {
+      return "object";
+    }
+    else if(parent && parent.classList.contains("json-array")) {
+
+    } else if(parent && parent.classList.contains("json-pair")) {
+
+    }
+
+  };
+
+  const getJsonElementType = (element: HTMLElement): string => {
+    if (isJsonObject(element)) return "object";
+    if (isJsonArray(element)) return "array";
+    if (isJsonString(element)) return "string";
+    if (isJsonNumber(element)) return "number";
+    if (isJsonBoolean(element)) return "boolean";
+    if (isJsonNull(element)) return "null";
+    if (isJsonComma(element)) return "comma";
+    if (isJsonColon(element)) return "colon";
+    return "unknown";
+  };
+  
+
+  const getTrimmedContent = (element: HTMLElement): string =>
+    element.textContent?.trim() || "";
+  
+  const isJsonObject = (element: HTMLElement): boolean => {
+    const content = getTrimmedContent(element);
+    return content.startsWith("{") && content.endsWith("}");
+  };
+  
+  const isJsonArray = (element: HTMLElement): boolean => {
+    const content = getTrimmedContent(element);
+    return content.startsWith("[") && content.endsWith("]");
+  };
+  
+  const isJsonString = (element: HTMLElement): boolean => {
+    const content = getTrimmedContent(element);
+    return content.length >= 2 && content.startsWith('"') && content.endsWith('"');
+  };
+  
+  const isJsonNumber = (element: HTMLElement): boolean => {
+    const content = getTrimmedContent(element);
+    return /^-?\d+(\.\d+)?$/.test(content);
+  };
+  
+  const isJsonBoolean = (element: HTMLElement): boolean => {
+    const content = getTrimmedContent(element);
+    return content === "true" || content === "false";
+  };
+  
+  const isJsonNull = (element: HTMLElement): boolean =>
+    getTrimmedContent(element) === "null";
+  
+  const isJsonComma = (element: HTMLElement): boolean =>
+    getTrimmedContent(element) === ",";
+  
+  const isJsonColon = (element: HTMLElement): boolean =>
+    getTrimmedContent(element) === ":";
+
   useEffect(() => {
-    document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener("selectionchange", handleSelectionChange);
     return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener("selectionchange", handleSelectionChange);
     };
   }, []);
 
@@ -92,12 +269,14 @@ const JsonFormatter: React.FC = () => {
   const [json, setJson] = useState<string>(
     `{"name": "John", "age": 30, "address": {"street": "123 Main St", "city": "New York", "state": "NY"}}`
   );
-  const [parsedOutput, setParsedOutput] = useState<React.ReactNode | null>(null);
+  const [parsedOutput, setParsedOutput] = useState<React.ReactNode | null>(
+    null
+  );
   const [cursorInfo, setCursorInfo] = useState<CursorInfo>({
     line: 1,
     column: 1,
-    text: '',
-    lineText: ''
+    text: "",
+    lineText: "",
   });
 
   const getValueType = (value: string): JsonValueType => {
@@ -113,12 +292,15 @@ const JsonFormatter: React.FC = () => {
 
   const formatJson = (jsonString: string): React.ReactNode => {
     const formatObject = (objectStr: string): React.ReactNode => {
-      const valueObject = /"([^"]+)":\s*(\{.*?\}|\[.*?\]|"[^"]*"|[^,{}\n]+)/g;
+      const valueObject =
+        /"([^"]+)":\s*(\{.*?\}|\[.*?\]|"[^"]*"|[^,{}\n]+)\s*(,?)/g;
       const matches = [...objectStr.matchAll(valueObject)];
+      console.log("matches", matches);
       const formattedPairs: React.ReactNode[] = [];
 
       matches.forEach((match) => {
-        const [_, key, value] = match;
+        const [, key, value] = match;
+        console.log("key", key, "value", value);
         const valueType = getValueType(value);
         let formattedValue: React.ReactNode = value;
 
@@ -126,21 +308,22 @@ const JsonFormatter: React.FC = () => {
           formattedValue = formatJson(value);
         }
 
+        // Usamos React.Fragment con key para envolver los dos elementos
         formattedPairs.push(
-          <div key={key} className="json-pair" data-line-text={`${key}: ${value}`}>
-            <span className="json-key">&quot;{key}&quot;</span>: {' '}
-            <span className={`json-value json-${valueType}`}>
-              {formattedValue}
-            </span>
-          </div>
+          <React.Fragment key={key}>
+            <div className="json-pair" data-line-text={`${key}: ${value}`}>
+              <span className="json-key">{`"${key}"`}</span>
+              <span className="colon">:</span>
+              <span className={`json-value json-${valueType}`}>
+                {formattedValue}
+              </span>
+            </div>
+            {match[3] === "," ? <span className="comma">,</span> : null}
+          </React.Fragment>
         );
       });
 
-      return (
-        <Collapsible type="object">
-          {formattedPairs}
-        </Collapsible>
-      );
+      return <Collapsible type="object">{formattedPairs}</Collapsible>;
     };
 
     const formatArray = (arrayStr: string): React.ReactNode => {
@@ -149,7 +332,7 @@ const JsonFormatter: React.FC = () => {
       const formattedItems: React.ReactNode[] = [];
 
       matches.forEach((match, index) => {
-        const [_, value] = match;
+        const [, value] = match;
         const valueType = getValueType(value);
         let formattedValue: React.ReactNode = value;
 
@@ -158,29 +341,38 @@ const JsonFormatter: React.FC = () => {
         }
 
         formattedItems.push(
-          <div key={index} className={`json-value json-${valueType}`} data-line-text={value}>
+          <div
+            key={index}
+            className={`json-value json-${valueType}`}
+            data-line-text={value}
+          >
             {formattedValue}
           </div>
         );
       });
 
-      return (
-        <Collapsible type="array">
-          {formattedItems}
-        </Collapsible>
-      );
+      return <div></div>;
     };
 
     try {
       const parsed = JSON.parse(jsonString);
-      const type: JsonValueType = Array.isArray(parsed) ? "array" : typeof parsed === "object" ? "object" : "unknown";
-      
+      const type: JsonValueType = Array.isArray(parsed)
+        ? "array"
+        : typeof parsed === "object"
+        ? "object"
+        : "unknown";
+      console.log("parsed", parsed);
+
       if (type === "object") {
         return formatObject(jsonString);
       } else if (type === "array") {
         return formatArray(jsonString);
       } else {
-        return <span className={`json-${type}`} data-line-text={jsonString}>{jsonString}</span>;
+        return (
+          <span className={`json-${type}`} data-line-text={jsonString}>
+            {jsonString}
+          </span>
+        );
       }
     } catch (error) {
       if (error instanceof Error) {
@@ -212,14 +404,16 @@ const JsonFormatter: React.FC = () => {
       </div>
 
       <div className="space-y-2 text-sm text-gray-600">
-        <div>Line: {cursorInfo.line}, Column: {cursorInfo.column}</div>
+        <div>
+          Line: {cursorInfo.line}, Column: {cursorInfo.column}
+        </div>
         <div>Current line text: {cursorInfo.lineText}</div>
         <div>Full element text: {cursorInfo.text}</div>
       </div>
 
       {parsedOutput && (
-        <EditableJsonView 
-          content={parsedOutput} 
+        <EditableJsonView
+          content={parsedOutput}
           onCursorUpdate={setCursorInfo}
         />
       )}

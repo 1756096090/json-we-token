@@ -1,11 +1,9 @@
-// page.tsx
-import JsonEditor2 from './views/JsonEditor2';
-
+import Json from '../app/views/Json';
 export default function Home() {
 
   return (
     <div className="p-4">
-      <JsonEditor2/>
+      <Json/>
     </div>
   );
 }
