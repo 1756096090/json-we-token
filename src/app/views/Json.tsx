@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useState } from "react"
 import './Json.scss'
-import { Container } from "postcss";
+
 
 type JsonValueType = "object" | "array" | "string" | "number" | "boolean" | "null" | "unknown";
 
@@ -19,13 +19,64 @@ const getValueType = (value: string): JsonValueType => {
   return "unknown";
 };
 
-const saveCursor = (range: Range) => {
-  const marker = document.createElement("span")
-  marker.id = "cursor-maker"
-  marker.appendChild(document.createTextNode("\u2020B"))
-  marker.style.display = "none"
-  range.insertNode(marker)
-}
+const saveCursor = (range: Range): HTMLElement | null => {
+  const marker = document.createElement("span");
+  marker.id = "cursor-marker";
+  // Usamos estilos que lo hagan invisible pero seleccionable
+  marker.style.opacity = "0";
+  marker.style.position = "absolute";
+  marker.style.width = "1px";
+  marker.style.height = "1px";
+  marker.setAttribute("data-cursor", "true");
+  console.log("Saving cursor, inserting marker:", marker);
+  range.insertNode(marker);
+  
+  // Obtener el contenedor del marcador
+  const container = marker.parentNode as HTMLElement | null;
+  if (container) {
+    console.log("HTML del contenedor:", container.innerHTML);
+  }
+
+  return container;
+};
+
+
+
+const restoreCursor = () => {
+  const marker = document.getElementById("cursor-marker");
+  if (marker) {
+    console.log("Restoring cursor, marker found:", marker);
+    // Aseguramos que el contenedor esté enfocado
+    marker.parentElement?.focus();
+    
+    // Hacemos visible el marcador temporalmente para evitar problemas de display
+    const originalDisplay = marker.style.display;
+    marker.style.display = "inline";
+
+    const selection = window.getSelection();
+    const range = document.createRange();
+
+    // En lugar de seleccionar el nodo completo, ubicamos el cursor justo antes del marcador
+    range.setStartBefore(marker);
+    range.collapse(true);
+
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    console.log("Cursor restored, scheduling marker removal");
+
+    // Removemos el marcador en el siguiente tick para asegurar la actualización de la selección
+    setTimeout(() => {
+      marker.parentNode?.removeChild(marker);
+    }, 0);
+
+    // Restauramos el estilo original, si fuera necesario
+    marker.style.display = originalDisplay;
+  } else {
+    console.log("No se encontró el marcador en el DOM");
+  }
+};
+
 
 export default function ContentEditableComponent() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -45,108 +96,77 @@ export default function ContentEditableComponent() {
     const range = selection.getRangeAt(0);
     const transformedJson = transformJson(containerRef.current, range);
 
+
     if (transformedJson) {
+      console.log("HTML del contenedor:", (transformedJson as HTMLElement).innerHTML);
+
+
       containerRef.current.innerHTML = transformedJson.outerHTML;
+
     }
 
     setIsUpdating(false); // Restablece el flag
   }, [isUpdating]);
-
+  
   const transformJson = (currentElement: HTMLElement, range: Range): HTMLDivElement | null => {
-    console.log("--- Información del HTMLElement ---");
-    console.log("Elemento actual:", currentElement);
-    console.log("ID del elemento:", currentElement.id);
-    console.log("Clases del elemento:", currentElement.className);
-    console.log("Estilos del elemento:", currentElement.style);
-    console.log("Contenido HTML del elemento:", currentElement.innerHTML);
-    console.log("Contenido de texto del elemento:", currentElement.textContent);
-    console.log("Atributos del elemento:", currentElement.attributes);
-    console.log("Métodos importantes del HTMLElement:", {
-      getAttribute: currentElement.getAttribute,
-      setAttribute: currentElement.setAttribute,
-      addEventListener: currentElement.addEventListener,
-      removeEventListener: currentElement.removeEventListener,
-      querySelector: currentElement.querySelector,
-      querySelectorAll: currentElement.querySelectorAll,
-      appendChild: currentElement.appendChild,
-      removeChild: currentElement.removeChild,
-      insertBefore: currentElement.insertBefore,
-      // ... y muchos otros métodos
-    });
-
-    console.log("\n--- Información del Range ---");
-    console.log("Rango actual:", range);
-    console.log("Nodo de inicio del rango:", range.startContainer);
-    console.log("Offset de inicio del rango:", range.startOffset);
-    console.log("Nodo de fin del rango:", range.endContainer);
-    console.log("Offset de fin del rango:", range.endOffset);
-    console.log("Si el rango está colapsado (inicio y fin son iguales):", range.collapsed);
-    console.log("Contenedor ancestro común del rango:", range.commonAncestorContainer);
-    console.log("Contenido del rango (DocumentFragment):", range.cloneContents());
-    console.log("Métodos importantes del Range:", {
-      selectNode: range.selectNode,
-      selectNodeContents: range.selectNodeContents,
-      setStart: range.setStart,
-      setEnd: range.setEnd,
-      setStartBefore: range.setStartBefore,
-      setStartAfter: range.setStartAfter,
-      setEndBefore: range.setEndBefore,
-      setEndAfter: range.setEndAfter,
-      deleteContents: range.deleteContents,
-      extractContents: range.extractContents,
-      insertNode: range.insertNode,
-      surroundContents: range.surroundContents,
-      cloneRange: range.cloneRange,
-      detach: range.detach,
-      // ... y otros métodos
-    });
-    saveCursor(range)
     const value = currentElement.textContent || "";
     const valueType = getValueType(value);
-
-    console.log("current element", range, currentElement)
-
+    console.log("current element", valueType, value);
+  
     if (valueType === "object") {
-      return createObject(value);
+      // Save cursor and get the container
+      const container = saveCursor(range);
+      
+      // If the container is valid, create the object
+      if (container) {
+        return createObject(container);
+      }
     }
+    
     return null;
   };
+  
 
-  const createObject = (value: string): HTMLDivElement => {
+  const createObject = (container: HTMLElement): HTMLDivElement => {
+    // Obtenemos el contenido del container
+    const value = container.textContent || "";
+    const newDiv = document.createElement('div');
+    newDiv.className = 'object';
+  
+    // Buscamos la posición de las llaves
     const firstBraceIndex = value.indexOf("{");
     const lastBraceIndex = value.lastIndexOf("}");
-
+  
+    // Si no se encuentran las llaves, simplemente asignamos el contenido
     if (firstBraceIndex === -1 || lastBraceIndex === -1) {
-      const newDiv = document.createElement('div');
-      newDiv.className = 'object';
       newDiv.textContent = value;
       return newDiv;
     }
-
-    const newDiv = document.createElement('div');
-    newDiv.className = 'object';
-
+  
+    // Creamos los elementos para la representación del objeto
     const leftBraceSpan = document.createElement('span');
     leftBraceSpan.textContent = '{';
-
+  
     const rightBraceSpan = document.createElement('span');
     rightBraceSpan.textContent = '}';
-
+  
+    // Extraemos el contenido entre las llaves
     const insideBraces = value.slice(firstBraceIndex + 1, lastBraceIndex);
-
     const insideBracesTextNode = document.createTextNode(insideBraces);
-
+  
+    // Construimos el nuevo DOM para el objeto
     newDiv.appendChild(leftBraceSpan);
     newDiv.appendChild(insideBracesTextNode);
     newDiv.appendChild(rightBraceSpan);
-
+  
     return newDiv;
   };
+  
 
   useEffect(() => {
-    document.addEventListener('selectionchange', handleSelectionChange);
+    document.addEventListener('input', handleSelectionChange);
     return () => {
-      document.removeEventListener('selectionchange', handleSelectionChange);
+      document.removeEventListener('input', handleSelectionChange);
     };
   }, [handleSelectionChange]);
 
